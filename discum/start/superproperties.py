@@ -38,7 +38,7 @@ class SuperProperties:
         sp = {
             "os": parseduseragent["os"]["family"],
             "browser": parseduseragent["user_agent"]["family"],
-            "device": "",
+            "device": "Discord Client",
             "system_locale": locale,
             "browser_user_agent": parseduseragent["string"],
             "browser_version": ".".join(filter(None, browser_ver_list)),
