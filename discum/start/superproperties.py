@@ -37,12 +37,13 @@ class SuperProperties:
         os_ver_list = [parseduseragent["os"]["major"], parseduseragent["os"]["minor"], parseduseragent["os"]["patch"]]
         sp = {
             "os": parseduseragent["os"]["family"],
-            "browser": parseduseragent["user_agent"]["family"],
-            "device": "Discord Client",
+            "browser": "Discord Client",
+            "device": "",
             "system_locale": locale,
             "browser_user_agent": parseduseragent["string"],
             "browser_version": ".".join(filter(None, browser_ver_list)),
             "os_version": ".".join(filter(None, os_ver_list)),
+            "os_arch": "x64",
             "referrer": "",
             "referring_domain": "",
             "referrer_current": "",
