@@ -44,18 +44,16 @@ def setStatusTest(resp):
 - expires_at (Optional[str]) - unix timestamp
 
 ##### ```gateway.setPlayingStatus```
-__\*currently does not work__
 ```python
 @bot.gateway.command
 def setStatusTest(resp):
     if resp.event.ready_supplemental:
-        bot.gateway.setPlayingStatus("pycraft")
+        bot.gateway.setPlayingStatus("Minecraft")
 ```
 ###### Parameters:
 - game (str)
 
 ##### ```gateway.setStreamingStatus```
-__\*currently does not work__
 ```python
 @bot.gateway.command
 def setStatusTest(resp):
@@ -67,7 +65,6 @@ def setStatusTest(resp):
 - url (str)
 
 ##### ```gateway.setListeningStatus```
-__\*currently does not work__
 ```python
 @bot.gateway.command
 def setStatusTest(resp):
@@ -78,7 +75,6 @@ def setStatusTest(resp):
 - song (str)
 
 ##### ```gateway.setWatchingStatus```
-__\*currently does not work__
 ```python
 @bot.gateway.command
 def setStatusTest(resp):
@@ -138,35 +134,16 @@ _____________
 bot.gateway.fetchMembers('guildID00000000000', 'channelID00000000000')
 bot.gateway.run()
 ```
-Before explaining the params, here're some things to keep in mind when using this function:
-1) There's no actual API endpoint for users to get guild members. [Instead, you have to request for and parse the member list, piece by piece.](https://arandomnewaccount.gitlab.io/discord-unofficial-docs/lazy_guilds.html) The fetchMembers function automates this and automatically removes itself from the command list once finished.
-2) Both guild id and channel id need to be provided. The member list is different for each channel. I'd recommend using general, announcements, or rules (some channel that most/everyone has access to).
-3) The member list does not necessarily contain all the members. For large guilds, the member list only contains online members. However, the member list is the most efficient way to get members.
-4) Discum's fetchMembers function is coded to mimic the official client behavior for fetching the member list. However, if you'd like to modify fetching behavior, there are params that let you do just that.
 ###### Parameters:
 - guild_id (str)
-- channel_id (str)
+- channel_id (str) - id of any visible category/channel
 - method (str/int/list/tuple) - defaults to "overlap"
   - "overlap":
-    - 100 members per request
-    - fetches member list by requesting for overlapped member ranges (think of it like a sliding window). The member ranges in order of requested are
-      ```
-      [[0,99],[100,199]]
-      [[0,99],[100,199],[200,299]]
-      [[0,99],[200,299],[300,399]]
-      ...
-      ```
+    - 100 members fetched per request
     - this is how the official discord client fetches the member sidebar (as the user scrolls through the member list)
   - "no overlap"
-    - 200 members per request
-    - fetches member list by requesting for non-overlapped member ranges. The member ranges in order of requested are
-      ```
-      [[0,99],[100,199]]
-      [[0,99],[200,299],[300,399]]
-      [[0,99],[400,499],[500,599]]
-      ...
-      ```
-    - 2 times faster than "overlap" method. However, it's more likely that you'll miss members due to nickname changes and presence updates.
+    - 200 members fetched per request
+    - 2 times faster than "overlap" method. However, it's more likely that you'll miss members due to nickname changes and presence updates. Also, it's more likely that you'll get rate-limited while using this method.
   - integer:
     - "overlap" and "no overlap" tell the fetchMembers function to set its multiplier variable to 100 and 200 (ranges are calculated using the multiplier and index values). If you'd like to set a different multiplier, just set method equal to that number. The multiplier has to be a multiple of 100.
   - list/tuple:
@@ -175,10 +152,10 @@ Before explaining the params, here're some things to keep in mind when using thi
   - list:
     - all possible member properties are: 
       ```
-       ['pending', 'deaf', 'hoisted_role', 'presence', 'joined_at', 'public_flags', 'username', 'avatar', 'discriminator', 'premium_since', 'roles', 'is_pending', 'mute', 'nick', 'bot']
+       ['pending', 'deaf', 'hoisted_role', 'presence', 'joined_at', 'public_flags', 'username', 'avatar', 'discriminator', 'premium_since', 'roles', 'is_pending', 'mute', 'nick', 'bot', 'communication_disabled_until']
       ```
     - set keep to the list of all the member properties you want to retain
-    - by default, keep is set to an empty list. This is done to save memory (which really does make a different for massive guilds).
+    - by default, keep is set to an empty list. This is done to save memory (which really does make a difference for massive guilds).
   - "all":
     - keep all member properties
   - None/[]
@@ -340,11 +317,11 @@ def guildTest(resp):
 ###### Parameters:
 - guild_id (str)
 - channel_ranges (Optional[dict]) - format is {"channelID":ranges} where ranges always contains [0,99] and up to 2 other ranges. So, ```[[0,99]]```, ```[[0,99], [100,199]]```, and ```[[0,99], [100,199], [200,299]]``` are examples of values for ranges
-- typing (Optional[bool]) - subscribe to typing indicators?
-- threads (Optional[bool]) - subscribe to thread updates?
-- activities (Optional[bool]) - subscribe to activity presence updates?
-- members (Optional[list]) - purpose of this is unknown
-- thread_member_lists (Optional[list]) - idk
+- typing (Optional[bool]) - subscribe to typing indicators
+- threads (Optional[bool]) - subscribe to thread updates
+- activities (Optional[bool]) - subscribe to activity presence updates
+- members (Optional[list]) - list of user id strings. subscribe the guild_member_list_update events from certain user(s)
+- thread_member_lists (Optional[list])
 
 ##### ```gateway.request.searchGuildMembers```
 ```python
@@ -360,6 +337,37 @@ def searchGuildMembersTest(resp):
 - presences (Optional[bool]) - whether or not to fetch user presences. Defaults to True
 - user_ids (Optional[list]) - search if specified users are in guild(s)
 - nonce (Optional[str]) - current discord snowflake; user accs don't use this, but it can be helpful for an easy way to link requests to their responses
+
+##### ```gateway.request.searchSlashCommands```
+below is an example for sending slash commands to a guild. First we search for slash commands and then we send the one we want.
+```python
+from discum.utils.slash import SlashCommander
+
+@bot.gateway.command
+def slashCommandTest(resp):
+    if resp.event.ready_supplemental:
+        bot.gateway.request.searchSlashCommands('guildID', limit=10, query="queue")
+    if resp.event.guild_application_commands_updated:
+        bot.gateway.removeCommand(slashCommandTest)
+        slashCmds = resp.parsed.auto()['application_commands']
+        s = SlashCommander(slashCmds, application_id='botID')
+        data = s.get(['queue'])
+        bot.triggerSlashCommand("botID", "channelID", "guildID", data=data)
+```
+###### Parameters:
+- guildID (str)
+- query (Optional[str]) - search for commands that start with query
+- command_ids (Optional[list]) - list of command ID strings to get data on
+- application_id (Optional[str]) - bot ID
+- limit (optional[int]) - up to how many results to get. Defaults to 10
+- offset (Optional[int]) - start showing results at what index. Defaults to None aka 0
+- nonce (Optional[str]) - current discord snowflake. Calculated by default.
+- app_type (Optional[str]) - application type. Defaults to 'chat'
+| application type | description |
+| ----------- | ----------- |
+| chat           | Slash commands; a text-based command that shows up when a user types |
+| user           | A UI-based command that shows up when you right click or tap on a user |
+| message           | A UI-based command that shows up when you right click or tap on a message |
 
 ##### ```gateway.parse(...).guild_member_list_update```
 ```python

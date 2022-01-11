@@ -33,9 +33,13 @@ bot = discum.Client(token="user token here")
 -   **code** (Optional[str]) - TOTP 6 digit code
 -   **token** (Optional[str]) - if you'd like to use discum without auth, input an invalid token like "poop"
 -   **remote\_auth** (Optional[bool/str]) - use remote authentication (scan qr code) to login. Set as filename if you'd like to set a specific file location for the qr code image. Defaults to True
--   **proxy\_host** (Optional[str]) - proxy host without http(s) part
--   **proxy\_port** (Optional[str])
--   **user\_agent** (Optional[str]) - defaults to "random", which then randomly generates a user agent
+-   **proxy** (Optional[str])
+	examples:       
+		"http://10.10.1.10:3128"       
+		"http://username:password123@10.10.1.10:3128"       
+		"https://10.10.1.10:3126"       
+		"socks4://10.10.1.10:3126"       
+-   **user\_agent** (Optional[str/list]) - defaults to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36". Input a list of user agent strings to randomly pick a user agent
 -   **locale** (Optional[str]) - defaults to "en-US"
 -   **build\_num** (Optional[int]) - defaults to "request", which then requests the discord build number
 -   **log** (Optional[dict]) - defaults to {"console":True, "file":False}. The value of "file" can be set to a filename (which is created if it does not exist)
@@ -44,7 +48,7 @@ bot = discum.Client(token="user token here")
 
 a discum.Client object
 
-examples
+Examples
 --------
 
 A simple example showing how to use the REST api wraps and how to interact with discord's gateway:

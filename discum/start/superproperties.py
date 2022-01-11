@@ -4,32 +4,42 @@ import ua_parser.user_agent_parser
 import re
 import time
 
-from ..RESTapiwrap import *
+from ..RESTapiwrap import Wrapper
 from ..logger import Logger
 
 class SuperProperties:
-    '''
-    https://luna.gitlab.io/discord-unofficial-docs/science.html#super-properties-object
-    '''
-    def __init__(self, s, buildnum="request", log={"console":True, "file":False}):
-        self.editedS = Wrapper.editedReqSession(s, {"remove": ["Authorization", "X-Super-Properties"]})
-        self.buildnum = buildnum
-        self.log = log
+	'''
+	https://luna.gitlab.io/discord-unofficial-docs/science.html#super-properties-object
+	'''
+	__slots__ = ['s', 'editedS', 'buildnum', 'log']
+	def __init__(self, s, buildnum="request", log={"console":True, "file":False}):
+		self.s = s
+		self.editedS = Wrapper.editedReqSession(s, {"remove": ["Authorization", "X-Super-Properties", "X-Fingerprint"]})
+		self.buildnum = buildnum
+		self.log = log
 
-    def requestBuildNumber(self):
-        Logger.log("Retrieving Discord's build number...", None, self.log)
-        discord_login_page_exploration = Wrapper.sendRequest(self.editedS, 'get', "https://discord.com/login", log=False).text #log set to False cause this takes up console space w/o giving meaningful info
-        time.sleep(1)
-        try: #getting the build num is kinda experimental since who knows if discord will change where the build number is located...
-            file_with_build_num = 'https://discord.com/assets/'+re.compile(r'assets/+([a-z0-9]+)\.js').findall(discord_login_page_exploration)[-2]+'.js' #fastest solution I could find since the last js file is huge in comparison to 2nd from last
-            req_file_build = Wrapper.sendRequest(self.editedS, 'get', file_with_build_num, log=False).text #log set to False cause this is a big file
-            index_of_build_num = req_file_build.find('buildNumber')+14
-            discord_build_num = int(req_file_build[index_of_build_num:index_of_build_num+5])
-            Logger.log('Discord is currently on build number '+str(discord_build_num), None, self.log)
-            return discord_build_num
-        except:
-            Logger.log('Could not retrieve discord build number.', None, self.log)
-            return None
+	def requestBuildNumber(self):
+		Logger.log("Retrieving Discord's build number...", None, self.log)
+		try: #getting the build num is kinda experimental since who knows if discord will change where the build number is located...
+			extraMods = {"update":{"Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate","Sec-Fetch-Site": "none"}}
+
+			res = Wrapper.sendRequest(self.editedS, 'get', "https://discord.com/login", headerModifications=extraMods, log=False)
+			if res:
+				self.s.cookies.update(res.cookies)
+			discord_login_page_exploration = res.text
+
+			#fastest solution I could find since the last js file is huge in comparison to 2nd from last
+			file_with_build_num = 'https://discord.com/assets/'+re.compile(r'assets/+([a-z0-9]+)\.js').findall(discord_login_page_exploration)[-2]+'.js'
+			req_file_build = Wrapper.sendRequest(self.editedS, 'get', file_with_build_num, log=False).text #log set to False cause this is a big file
+			index_of_build_num = req_file_build.find('buildNumber')+14
+			discord_build_num = int(req_file_build[index_of_build_num:index_of_build_num+6])
+
+			Logger.log('Discord is currently on build number '+str(discord_build_num), None, self.log)
+			return discord_build_num
+		except Exception as e:
+			Logger.log('Could not retrieve discord build number.', None, self.log)
+			Logger.log(e, None, self.log)
+			return None
 
     def getSuperProperties(self, user_agent, locale):
         parseduseragent = ua_parser.user_agent_parser.Parse(user_agent)
@@ -49,7 +59,7 @@ class SuperProperties:
             "referrer_current": "",
             "referring_domain_current": "",
             "release_channel": "stable",
-            "client_build_number": 85108,
+            "client_build_number": 107767,
             "client_event_source": None
         }
         if locale == None:

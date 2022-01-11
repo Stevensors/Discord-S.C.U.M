@@ -1,9 +1,13 @@
 import base64
 import datetime
-from ..RESTapiwrap import *
+
+from ..RESTapiwrap import Wrapper
 from ..utils.contextproperties import ContextProperties
+from ..utils.color import Color
+from ..utils.nonce import calculateNonce
 
 class User(object):
+	__slots__ = ['discord', 's', 'log']
 	def __init__(self, discord, s, log): #s is the requests session object
 		self.discord = discord
 		self.s = s
@@ -11,6 +15,10 @@ class User(object):
 
 	def getRelationships(self):
 		url = self.discord+"users/@me/relationships"
+		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
+
+	def getMutualFriends(self, userID):
+		url = self.discord+"users/"+userID+"/relationships"
 		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
 	def requestFriend(self, user):
@@ -37,10 +45,15 @@ class User(object):
 		body = {"type": 2}
 		return Wrapper.sendRequest(self.s, 'put', url, body, headerModifications={"update":{"X-Context-Properties":ContextProperties.get(location)}}, log=self.log)
 
-	def getProfile(self, userID, with_mutual_guilds):
+	def getProfile(self, userID, with_mutual_guilds, guildID):
 		url = self.discord+"users/"+userID+"/profile"
+		queries = []
 		if with_mutual_guilds != None:
-			url += "?with_mutual_guilds="+repr(with_mutual_guilds).lower()
+			queries.append("with_mutual_guilds="+repr(with_mutual_guilds).lower())
+		if guildID != None:
+			queries.append("guild_id="+str(guildID))
+		if queries:
+			url += '?'+'&'.join(queries)
 		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
 	def info(self, with_analytics_token): #simple. bot.info() for own user data
@@ -76,8 +89,17 @@ class User(object):
 		url = self.discord+"users/@me/notes/"+userID
 		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
+	def setUserNote(self, userID, note):
+		url = self.discord+'users/@me/notes/'+userID
+		body = {"note": note}
+		return Wrapper.sendRequest(self.s, 'put', url, body, log=self.log)
+
 	def getRTCregions(self):
 		url = "https://latency.discord.media/rtc"
+		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
+
+	def getVoiceRegions(self):
+		url = self.discord+'voice/regions'
 		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
 	def setStatusHelper(self, status, timeout=None): #Dont run this function by itself; status options are: online, idle, dnd, invisible
@@ -116,6 +138,11 @@ class User(object):
 		with open(imagePath, "rb") as image:
 			encodedImage = base64.b64encode(image.read()).decode('utf-8')
 		body = {"avatar":"data:image/png;base64,"+encodedImage}
+		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
+
+	def setProfileColor(self, color):
+		url = self.discord+"users/@me"
+		body = {"accent_color": Color.get(color)}
 		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
 
 	def setUsername(self, username, password):
@@ -177,14 +204,18 @@ class User(object):
 		body = {"password": password}
 		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
 
-	def setPhone(self, number):
+	def setPhone(self, number, reason):
 		url = self.discord+"users/@me/phone"
-		body = {"phone": number}
+		body = {"phone": number, "change_phone_reason": reason}
 		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
 
-	def validatePhone(self, number, code):
+	def validatePhone(self, number, code, password):
 		url = self.discord+"phone-verifications/verify"
 		body = {"phone": number,"code": str(code)}
+		request = Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
+
+		url = self.discord+"users/@me/phone"
+		body = {"phone_token":request.json()["token"], "password":password}
 		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
 
 	'''
@@ -269,7 +300,7 @@ class User(object):
 		url = self.discord+"users/@me/billing/subscriptions"
 		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
-	def getStripeClientSecret(self): #for adding new payment methods. Stripe api wraps are not included because discum is just a discord api wrapper.
+	def getStripeClientSecret(self): #for adding new payment methods. Stripe api wraps are not included because discum is just a discord api 
 		url = self.discord+"users/@me/billing/stripe/setup-intents"
 		return Wrapper.sendRequest(self.s, 'post', url, log=self.log)
 
@@ -449,7 +480,7 @@ class User(object):
 		url = self.discord+"users/@me/guilds/"+str(guildID)+"/settings"
 		if type(overrides[0]) in (tuple, list):
 			msgNotificationTypes = ["all messages", "only mentions", "nothing"]
-			overrides = [{str(channel):{"message_notifications": self.index(msgNotificationTypes, msg.lower()), "muted":muted}} for channel,msg,muted in overrides]
+			overrides = {str(channel):{"message_notifications": self.index(msgNotificationTypes, msg.lower()), "muted":muted} for channel,msg,muted in overrides}
 		body = {"channel_overrides": overrides}
 		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
 
@@ -470,9 +501,12 @@ class User(object):
 	def muteDM(self, DMID, mute, duration):
 		url = self.discord+"users/@me/guilds/%40me/settings"
 		data = {"muted": mute}
-		if mute and duration is not None:
-			end_time = (datetime.datetime.utcnow()+datetime.timedelta(minutes=duration)).isoformat()[:-3]+'Z'
-			data["mute_config"] = {"selected_time_window":duration, "end_time":end_time}
+		if mute:
+			if duration is not None:
+				end_time = (datetime.datetime.utcnow()+datetime.timedelta(minutes=duration)).isoformat()[:-3]+'Z'
+				data["mute_config"] = {"selected_time_window":duration, "end_time":end_time}
+			else:
+				data["mute_config"] = {"selected_time_window":-1, "end_time":None}
 		body = {"channel_overrides":{str(DMID):data}}
 		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
 
@@ -482,6 +516,42 @@ class User(object):
 		flags = 1<<(self.index(threadNotificationTypes, notifications.lower())+1)
 		body = {"flags": flags}
 		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
+
+	def getReportMenu(self):
+		url = self.discord+'reporting/menu/first_dm'
+		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
+
+	def reportSpam(self, channelID, messageID, reportType, guildID, version, variant, language):
+		url = self.discord+'reporting/'+reportType
+		body = {
+			"id": calculateNonce(),
+			"version": version,
+			"variant": variant,
+			"language": language,
+			"breadcrumbs": [7],
+			"elements": {},
+			"name": reportType,
+			"channel_id": channelID,
+			"message_id": messageID,
+		}
+		if reportType in ('guild_directory_entry', 'stage_channel', 'guild'):
+			body["guild_id"] = guildID
+		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
+
+	def getHandoffToken(self, key):
+		url = self.discord+'auth/handoff'
+		body = {"key": key}
+		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
+
+	def inviteToCall(self, channelID, userIDs):
+		url = self.discord+'channels/'+channelID+'/call/ring'
+		body = {"recipients": userIDs}
+		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
+
+	def declineCall(self, channelID):
+		url = self.discord+'channels/'+channelID+'/call/stop-ringing'
+		body = {}
+		return Wrapper.sendRequest(self.s, 'post', url, body, log=self.log)
 
 	'''
 	Logout

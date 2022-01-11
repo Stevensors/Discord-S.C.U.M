@@ -22,6 +22,8 @@ bot.getSuperProperties('Opera/8.17 (Windows NT 5.1; sl-SI) Presto/2.8.215 Versio
 ```python
 bot.getXFingerprint()
 ```
+###### Parameters:
+- generateIfNone (Optional[bool]) - if xfingerprint does not get fetched, generate a random fingerprint
 ###### Returns:
 xfingerprint string
 
@@ -63,6 +65,16 @@ bot.getOauth2Tokens()
 ```python
 bot.getVersionStableHash()
 ```
+##### ```getLibrary```
+```python
+bot.getLibrary()
+```
+##### ```getBadDomainHashes```
+```python
+bot.getBadDomainHashes()
+```
+###### Returns:
+list of hashes
 __________
 ### User
 | relationship type | description |
@@ -76,6 +88,13 @@ __________
 ```python
 bot.getRelationships()
 ```
+
+##### ```getMutualFriends```
+```python
+bot.getMutualFriends("2222222222222222")
+```
+###### Parameters:
+- userID (str)
 
 ##### ```requestFriend```
 \*_risky action_
@@ -117,6 +136,7 @@ bot.getProfile('222222222222222222')
 ###### Parameters:
 - userID (str)
 - with_mutual_guilds (Optional[bool/None]) - get mutual guilds. Defaults to True
+- guildID (Optional[str]) - gets guild member info, if applicable
 
 ##### ```info```
 ```python
@@ -155,14 +175,27 @@ bot.getMyStickers()
 ```
 ##### ```getNotes```
 ```python
-bot.getNotes('222222222222222222')
+bot.getNotes('userID0000000000')
 ```
 ###### Parameters:
 - user ID (str)
 
+##### ```setUserNote```
+```python
+bot.setUserNote('userID0000000000', 'hello')
+```
+###### Parameters:
+- userID (str)
+- note (str)
+
 ##### ```getRTCregions```
 ```python
 bot.getRTCregions()
+```
+
+##### ```getVoiceRegions```
+```python
+bot.getVoiceRegions()
 ```
 
 ##### ```setUsername```
@@ -204,6 +237,18 @@ bot.setAvatar('./catpics/001.png')
 ```
 ###### Parameters:
 - image path (str)
+
+##### ```setProfileColor```
+```python
+bot.setProfileColor('red')
+```
+###### Parameters:
+- color (Optional[str/tuple/list/int]) - can either input a color name, an rgb tuple/list, or a decimal color. Defaults to None
+
+Note: these are all the possible string values:
+```
+['black', 'default', 'aqua', 'teal', 'dark_aqua', 'dark_teal', 'green', 'dark_green', 'blue', 'dark_blue', 'purple', 'dark_purple', 'magenta', 'luminous_vivid_pink', 'dark_magenta', 'dark_vivid_pink', 'gold', 'dark_gold', 'orange', 'dark_orange', 'red', 'dark_red', 'light_grey', 'grey', 'dark_grey', 'darker_grey', 'og_blurple', 'ruined_blurple', 'blurple', 'greyple', 'dark_theme', 'not_quite_black', 'dark_but_not_black', 'white', 'fuchsia', 'yellow', 'navy', 'dark_navy']
+```
 
 ##### ```setAboutMe```
 currently, you need to be in the beta testing program for this to work
@@ -278,6 +323,7 @@ bot.setPhone("+12222222222")
 ```
 ###### Parameters:
 - number (str) - format: +(country-code)(rest of phone number)
+- reason (str) - defaults to "user_settings_update"
 
 ##### ```validatePhone```
 ```python
@@ -573,7 +619,7 @@ bot.setChannelNotificationOverrides('0000000000000000000', [('1111111111111', 'o
 ```
 
 ###### Parameters:
-- guildID (str)
+- guildID (str) - for DMs, set the guildID to '%40me'
 - overrides (list) - list of tuples containing data about channel notification overrides. Each tuple looks like ('channelID', 'msg notifications type', 'mute'). 'msg notifications type' is either "all messages" or "only mentions" or "nothing". 'mute' is a boolean. If instead you'd like to input the raw overrides dictionary, you can do that instead.
 
 ##### ```setMessageNotifications```
@@ -603,7 +649,7 @@ bot.muteDM('0000000000000000000', duration=900)
 ###### Parameters:
 - DMID (str)
 - mute (Optional[bool]) - defaults to True
-- duration (Optional[int]) - duration of mute in minutes
+- duration (Optional[int]) - duration of mute in minutes. Defaults to None (mute until you unmute it)
 
 ##### ```setThreadNotifications```
 ```python
@@ -612,6 +658,50 @@ bot.setThreadNotifications('threadID000000000', 'all messages')
 ###### Parameters:
 - threadID (str)
 - notifications (str) - either "all messages" or "only mentions" or "nothing"
+
+##### ```getReportMenu```
+used to get version and variant of report menu
+```python
+bot.getReportMenu()
+```
+
+##### ```reportSpam```
+```python
+bot.reportSpam('channelID00000000', 'messageID00000000')
+```
+###### Parameters:
+channelID, messageID, reportType="first_dm", guildID=None, version="1.0", variant="1", language="en"
+- channelID (str)
+- messageID (str)
+- reportType (Optional[str]) - options are "first_dm", "message", "user", "guild", "guild_directory_entry", "stage_channel". Defaults to "first_dm"
+- guildID (Optional[str]) - if reportType is in ("guild", "guild_directory_entry", "stage_channel"), then this field is necessary
+- version (Optional[str]) - the report menu version. Can be retrievied from the response of ```bot.getReportMenu()```
+- variant (Optional[str]) - the report menu variant. Can be retrievied from the response of ```bot.getReportMenu()```
+- language (Optional[str]) - ISO 639-1 Code language representation. Example: "en" for English. See the 2-letter codes at https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes. Defaults to "en"
+
+##### ```getHandoffToken```
+this does **not** return your token. I'm not sure yet what it is.
+```python
+bot.getHandoffToken('b909e096-f16e-4c75-9da6-4a237354ca4f')
+```
+###### Parameters:
+- key (str) - uuid (version 4; variant DCE 1.1, ISO/IEC 11578:1996). Also, this seems to work with any randomly generated version 4 UUID
+
+##### ```inviteToCall```
+invite user(s) to a call (in a DM/group DM)
+```python
+bot.inviteToCall('channelID00000000', ['userID0000000000', 'userID11111111111'])
+```
+###### Parameters:
+- channelID (str) - DM ID
+- userIDs (Optional[list]) - list of strings
+
+##### ```declineCall```
+```python
+bot.declineCall('channelID00000000')
+```
+###### Parameters:
+- channelID (str) - DM ID
 
 ##### ```logout```
 ```python
@@ -677,11 +767,13 @@ bot.getInfoFromInviteCode('minecraft')
 \*_risky action_
 ```python
 bot.joinGuild('1a1a1')
+#or
+bot.joinGuild('1a1a1', location='markdown')
 ```
 ###### Parameters:
 - inviteCode (str) - just the invite code, NOT the entire link
-- location (Optional[str]) - "accept invite page" or "join guild". Defaults to "accept invite page"
-- wait (Optional[int]) - this function uses 2 endpoints: getInfoFromInviteCode and a raw join guild endpoint; wait specifies the time to wait inbetween these 2 requests. Defaults to 0. 
+- location (Optional[str]) - "accept invite page", "join guild", or "markdown". The "markdown" option uses only 1 request while the other options use 2 requests. Defaults to "accept invite page"
+- wait (Optional[int]) - only used if "accept invite page" or "join guild" locations are used. Specifies the wait time in seconds between the getInfoFromInviteCode and raw join guild endpoint. Defaults to 0. 
 
 ##### ```previewGuild```
 Only works on discoverable guilds and only applicable for current session. This is best used while the gateway is running, even though it does not require the gateway to run.
@@ -716,12 +808,33 @@ bot.createInvite('channelID00000000000')
 - checkInvite (Optional[str]) - invite code to check. Defaults to ""
 - targetType (Optional[str]) - unknown. Defaults to ""
 
+##### ```getGuildInvites```
+```python
+bot.getGuildInvites('guildID00000000000')
+```
+###### Parameters:
+- guildID (str)
+
 ##### ```getGuilds```
 ```python
 bot.getGuilds()
 ```
 ###### Parameters:
 - with_counts (bool/Nonetype) - get approx online and member counts. Defaults to True
+
+##### ```getGuildChannels```
+```python
+bot.getGuildChannels('guildID00000000000')
+```
+###### Parameters:
+- guildID (str)
+
+##### ```getGuildRoles```
+```python
+bot.getGuildRoles('guildID00000000000')
+```
+###### Parameters:
+- guildID (str)
 
 ##### ```getDiscoverableGuilds```
 ```python
@@ -730,6 +843,13 @@ bot.getDiscoverableGuilds()
 ###### Parameters:
 - offset (Optional[int]) - after how many results to start at. Defaults to 0
 - limit (Optional[int]) - maximum number of results to display. Defaults to 24
+
+##### ```getGuildRegions```
+```python
+bot.getGuildRegions('guildID00000000000')
+```
+###### Parameters:
+- guildID (str)
 
 ##### ```createGuild```
 ```python
@@ -782,9 +902,52 @@ bot.revokeBan('guildID00000000000','userID11111111111')
 ```python
 bot.getRoleMemberCounts('guildID00000000000')
 ```
-
 ###### Parameters:
 - guildID (str)
+
+##### ```getGuildIntegrations```
+```python
+bot.getGuildIntegrations('guildID00000000000')
+```
+###### Parameters:
+- guildID (str)
+- include_applications (Optional[bool/Nonetype]) - include bot info. Defaults to True.
+
+##### ```getGuildTemplates```
+```python
+bot.getGuildTemplates('guildID00000000000')
+```
+###### Parameters:
+- guildID (str)
+
+##### ```getRoleMemberIDs```
+this does not work for the @everyone role
+```python
+bot.getRoleMemberIDs('guildID00000000000', 'roleID000000000000')
+```
+###### Parameters:
+- guildID (str)
+- roleID (str)
+
+##### ```addMembersToRole```
+add members to role (add a role to multiple members at the same time)
+```python
+bot.addMembersToRole('guildID00000000000', 'roleID000000000000', ['userID1', 'userID2'])
+```
+###### Parameters:
+- guildID (str)
+- roleID (str)
+- memberIDs (list of strings)
+
+##### ```setMemberRoles```
+to add or remove roles, you need to know the current roles of the user
+```python
+bot.setMemberRoles('guildID00000000000', 'memberID0000000000', ['roleID1', 'roleID2'])
+```
+###### Parameters:
+- guildID (str)
+- memberID (str)
+- roleIDs (list of strings) - needs to have all the role IDs that you want the member to have
 
 ##### ```getMemberVerificationData```
 ```python
@@ -814,6 +977,7 @@ bot.createThread('channelID00000000', 'test')
 - messageID (Optional[str])
 - public (Optional[bool]) - defaults to True
 - archiveAfter (Optional[str]) - archive after '1 hour', '24 hours', '3 days', or '1 week'. Defaults to '24 hours'
+
 ##### ```leaveThread```
 ```python
 bot.leaveThread('threadID00000000')
@@ -821,6 +985,7 @@ bot.leaveThread('threadID00000000')
 ###### Parameters:
 - threadID (str)
 - location (Optional[str]) - basically context properties. Defaults to "Sidebar Overflow"
+
 ##### ```joinThread```
 ```python
 bot.joinThread('threadID0000000')
@@ -828,6 +993,7 @@ bot.joinThread('threadID0000000')
 ###### Parameters:
 - threadID (str)
 - location (Optional[str]) - basically context properties. Defaults to "Banner"
+
 ##### ```archiveThread```
 ```python
 bot.archiveThread(threadID)
@@ -835,6 +1001,7 @@ bot.archiveThread(threadID)
 ###### Parameters:
 - threadID (str)
 - lock (Optional[bool]) - prevent ppl from sending msgs in thread. Defaults to True
+
 ##### ```unarchiveThread```
 ```python
 bot.unarchiveThread(threadID)
@@ -842,8 +1009,187 @@ bot.unarchiveThread(threadID)
 ###### Parameters:
 - threadID (str)
 - lock (Optional[bool]) - prevent ppl from sending msgs in thread. Defaults to False
+
+##### ```lookupSchool```
+```python
+bot.lookupSchool('school@school.edu')
+```
+###### Parameters:
+- email (str)
+- allowMultipleGuilds (Optional[bool]) - defaults to True
+- useVerificationCode (Optional[bool]) - defaults to True
+
+##### ```schoolHubWaitlistSignup```
+```python
+bot.schoolHubWaitlistSignup('school@school.edu', 'wowow')
+```
+###### Parameters:
+- email (str)
+- school (str) - school name
+
+##### ```schoolHubSignup```
+```python
+bot.schoolHubSignup('school@school.edu', 'hubID0000000000')
+```
+###### Parameters:
+- email (str)
+- hubID (str) - aka guild ID
+
+##### ```verifySchoolHubSignup```
+```python
+bot.verifySchoolHubSignup('hubID0000000000', 'school@school.edu', '12345')
+```
+###### Parameters:
+- hubID (str) - aka guild ID
+- email (str)
+- code (str)
+
+##### ```getSchoolHubGuilds```
+```python
+bot.getSchoolHubGuilds('hubID0000000000')
+```
+###### Parameters:
+- hubID (str)
+
+##### ```getSchoolHubDirectoryCounts```
+```python
+bot.getSchoolHubDirectoryCounts('hubID0000000000')
+```
+###### Parameters:
+- hubID (str)
+
+##### ```joinGuildFromSchoolHub```
+```python
+bot.joinGuildFromSchoolHub('hubID0000000000', 'guildID000000000')
+```
+###### Parameters:
+- hubID (str)
+- guildID (str)
+
+##### ```searchSchoolHub```
+```python
+bot.searchSchoolHub('hubID0000000000', 'cats')
+```
+###### Parameters:
+- hubID (str)
+- query (str)
+
+##### ```getMySchoolHubGuilds```
+get guilds that I'm an owner of that either can potentially be added to the hub or are already in the hub
+```python
+bot.getMySchoolHubGuilds('hubID0000000000')
+```
+###### Parameters:
+- hubID (str)
+
+##### ```setSchoolHubGuildDetails```
+```python
+bot.setSchoolHubGuildDetails('hubID0000000000', 'guildID000000000', 'cats and dogs', 1)
+```
+###### Parameters:
+- hubID (str)
+- guildID (str)
+- description (str)
+- directoryID (int)
+
+##### ```getLiveStages```
+```python
+bot.getLiveStages()
+```
+###### Parameters:
+- extra (Optional[bool]) - defaults to False
+
+##### ```getChannel```
+```python
+bot.getChannel('channelID0000000')
+```
+###### Parameters:
+- channelID (str)
+
+##### ```getGuildActivitiesConfig```
+```python
+bot.getGuildActivitiesConfig('guildID0000000')
+```
+###### Parameters:
+- guildID (str)
 __________
-### Messages
+### Interactions
+##### ```getSlashCommands```
+Only works if you already have a DM with this bot.
+If you only share a guild with the bot, you'll have to use [bot.gateway.searchGuildMembers](Gateway_Actions.md#gatewaysearchGuildMembers)
+```python
+bot.getSlashCommands("botID")
+```
+###### Parameters:
+- applicationID (str) - the bot ID
+
+##### ```triggerSlashCommand```
+```python
+#first, lets see what slash commands we can run.
+slashCmds = bot.getSlashCommands("botID").json()
+
+#next, let's parse that and create some slash command data
+from discum.utils.slash import SlashCommander
+s = SlashCommander(slashCmds) #slashCmds can be either a list of cmds or just 1 cmd. Each cmd is of type dict.
+data = s.get(['saved', 'queues', 'create'], {'name':'hi'})
+
+#finally, lets send the slash command
+bot.triggerSlashCommand("botID", "channelID", guildID="guildID", data=data)
+```
+###### Parameters:
+- applicationID (str) - bot ID
+- channelID (str)
+- guildID (Optional[str])
+- data (dict) - gets sent in the "data" key. Can use discum.utils.slash.SlashCommander to help with formatting the data.
+- nonce (Optional[str]) - by default, this is calculated
+
+##### ```triggerUserCommand```
+```python
+bot.triggerUserCommand("botID", "channelID", guildID="guildID", data=data)
+```
+###### Parameters:
+- applicationID (str) - bot ID
+- channelID (str)
+- guildID (Optional[str])
+- data (dict) - gets sent in the "data" key. Can use discum.utils.slash.SlashCommander to help with formatting the data.
+- nonce (Optional[str]) - by default, this is calculated
+
+##### ```triggerMessageCommand```
+```python
+bot.triggerUserCommand("botID", "messageID", "channelID", guildID="guildID", data=data)
+```
+###### Parameters:
+- applicationID (str) - bot ID
+- messageID (str)
+- channelID (str)
+- guildID (Optional[str])
+- data (dict) - gets sent in the "data" key. Can use discum.utils.slash.SlashCommander to help with formatting the data.
+- nonce (Optional[str]) - by default, this is calculated
+
+##### ```click```
+```python
+#message is a dict
+from discum.utils.button import Buttoner
+buts = Buttoner(message["components"])
+bot.click(
+    message["webhook_id"],
+    channelID=message["channel_id"],
+    guildID=message.get("guild_id"),
+    messageID=message["id"],
+    messageFlags=message["flags"],
+    data=buts.getButton("First"),
+)
+```
+###### Parameters:
+- applicationID (str) - bot ID
+- channelID (str)
+- messageID (str)
+- messageFlags (str) - obtained by doing message["flags"]
+- guildID (str)
+- nonce (Optional[str]) - by default, this gets calculated
+- data (dict) - gets sent in the "data" key. Can use discum.utils.button.Buttoner to help with formatting the data.
+__________
+### Dms
 ##### ```createDM```
 \*_risky action_
 ```python
@@ -853,6 +1199,69 @@ bot.sendMessage(newDM, "hello")
 ###### Parameters:
 - recipients (list) - list of user ID strings
 
+##### ```removeFromDmGroup```
+```python
+bot.removeFromDmGroup('DMID00000000000', 'userID000000000000')
+```
+###### Parameters:
+- channelID (str) - DM ID
+- userID (str)
+
+##### ```addToDmGroup```
+```python
+bot.addToDmGroup('DMID00000000000', 'userID000000000000')
+```
+###### Parameters:
+- channelID (str) - DM ID
+- userID (str)
+
+##### ```createDmGroupInvite```
+```python
+bot.createDmGroupInvite('DMID00000000000')
+```
+###### Parameters:
+- channelID (str) - DM ID
+- max_age_seconds (int) - number of seconds for invite to last. Defaults to 86400 (24 hrs)
+
+##### ```setDmGroupName```
+```python
+bot.setDmGroupName('DMID00000000000', 'helloworld')
+```
+###### Parameters:
+- channelID (str) - DM ID
+- name (str)
+
+##### ```setDmGroupIcon```
+```python
+bot.setDmGroupIcon('DMID00000000000')
+```
+###### Parameters:
+- channelID (str) - DM ID
+- imagePath (str) - local image path
+__________
+### Channels
+##### ```deleteChannel```
+```python
+bot.deleteChannel('channelID0000000000')
+```
+###### Parameters:
+- channelID (str)
+
+##### ```deleteInvite```
+```python
+bot.deleteInvite('blahblah')
+```
+###### Parameters:
+- inviteCode (str)
+
+##### ```getChannelInvites```
+```python
+bot.getChannelInvites('channelID0000000000')
+```
+###### Parameters:
+- channelID (str)
+__________
+### Messages
 ##### ```getMessages```
 ```python
 bot.getMessages("channelID0000000000")
@@ -881,7 +1290,8 @@ bot.greet('channelID0000000000', ["749054660769218631"])
 
 ##### ```Embedder```
 ```python
-embed = bot.Embedder()
+from discum.utils.embed import Embedder
+embed = Embedder()
 embed.title("This is a test")
 embed.image('https://cdn.dribbble.com/users/189524/screenshots/2105870/04-example_800x600_v4.gif')
 embed.fields('Hello!',':yum:')
@@ -900,6 +1310,7 @@ bot.sendMessage("383003333751856129","Hello You :)")
 - message (str)
     * \*\*bold\*\*
     * \*italicized\*
+    * \_\_underlined\_\_
     * \~\~strikethrough\~\~
     * \>quoted
     * \`code\`
@@ -944,10 +1355,14 @@ bot.reply('222222222222222222','000000000000000000', 'this is a reply', sticker_
 
 ##### ```searchMessages```
 ```python
-bot.searchMessages("guildID000000000",textSearch="hello")
+#if searching in a guild:
+bot.searchMessages("guildID000000000", textSearch="hello")
+
+#if searching in a DM/DM group:
+bot.searchMessages(channelID="channelID0000000", textSearch="hello")
 ```
 ###### Parameters:
-- guildID (str)
+- guildID (Optional[str]) - if searching messages in a guild
 - channelID (Optional[str/list]) - channel ID string(s)
 - authorID (Optional[str/list]) - author ID string(s)
 - authorType (Optional[str/list]) - author type(s): "user", "bot", and/or "webhook"
@@ -960,9 +1375,11 @@ bot.searchMessages("guildID000000000",textSearch="hello")
 - attachmentFilename (Optional[str/list])
 - mentionsEveryone (Optional[bool]) - return msgs that actually mention everyone (only if said user had perms to mention everyone)
 - includeNsfw (Optional[bool])
+- sortBy (Optional[str]) - 'timestamp' or 'relevance'
+- sortOrder (Optional[str]) - 'asc' (oldest to newest) or 'desc' (newest to oldest)
 - afterDate (Optional[str]) - discord snowflake string (highest msg id)
 - beforeDate (Optional[str]) - discord snowflake string (highest msg id)
-- textSearch (Optional[str])
+- textSearch (Optional[str]) - content
 - afterNumResults (Optional[int]) - multiples of 25
 - limit (Optional[int]) - how many results to show
 

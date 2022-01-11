@@ -18,7 +18,7 @@ URL = 'https://github.com/Merubokkusu/Discord-S.C.U.M'
 EMAIL = 'loser@merubokkusu.com'
 AUTHOR = 'Merubokkusu'
 REQUIRES_PYTHON = '>=2.7.0'
-VERSION = '1.3.1'
+VERSION = '1.4.0'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
@@ -28,7 +28,6 @@ REQUIRED = [
     'filetype',
     'websocket-client==0.59.0',
     'ua-parser',
-    'random_user_agent',
     'colorama'
 ]
 
@@ -36,7 +35,7 @@ REQUIRED = [
 EXTRAS = {
     'ra': [
         'pycryptodome', 
-        'pyqrcode'
+        'pyqrcode',
         'pypng'
     ]
 }

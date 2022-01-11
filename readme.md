@@ -1,13 +1,16 @@
 # DisCum
-![version](https://img.shields.io/badge/github%20version-1.3.1-blue) [![python versions](https://img.shields.io/badge/python-2.7%20%7C%203.5%20%7C%203.6%20%7C%203.7%20%7C%203.8%20%7C%203.9-blue)](https://github.com/Merubokkusu/Discord-S.C.U.M)       
+![version](https://img.shields.io/badge/github%20version-1.4.0-blue) [![python versions](https://img.shields.io/badge/python-2.7%20%7C%203.5%20%7C%203.6%20%7C%203.7%20%7C%203.8%20%7C%203.9-blue)](https://github.com/Merubokkusu/Discord-S.C.U.M)       
 [![PyPI version](https://badge.fury.io/py/discum.svg)](https://badge.fury.io/py/discum) [![python versions](https://img.shields.io/badge/python-2.7%20%7C%203.5%20%7C%203.6%20%7C%203.7%20%7C%203.8%20%7C%203.9-green)](https://pypi.org/project/discum)      
 A simple, easy to use, non-restrictive, synchronous Discord API Wrapper for Selfbots/Userbots written in Python.       
 -using requests and websockets :)
 
 ![https://files.catbox.moe/3ns003.png](https://files.catbox.moe/3ns003.png)
         
-\* You can send issues to discordtehe@gmail.com (arandomnewaccount will respond). If you put them in the issues tab, either arandomnewaccount will edit your message to "respond" because he can't post public comments or Merubokkusu will respond. Please at least read the README before submitting an issue.       
-** Currently really busy so might take a while to respond.        
+Will have less and less time to work on this project.          
+If you have issues, you can either make an issue, email discordtehe@gmail.com, or ask on https://reddit.com/r/Discord_selfbots.       
+For another python library that's currently better maintained, I'd recommend the following (asynchronous) lib: https://github.com/dolfies/discord.py-self           
+Happy new year & happy coding,         
+\- arandomnewaccount                  
 ##### *** risky actions: [issue #66](https://github.com/Merubokkusu/Discord-S.C.U.M/issues/66#issue-876713938)
 
 ## Table of Contents
@@ -43,11 +46,11 @@ A simple, easy to use, non-restrictive, synchronous Discord API Wrapper for Self
   Note, using a selfbot is against Discord's Terms of Service and you could get banned for using one if you're not careful. Also, this needs to be said: discum does not have rate limit handling. The main reasons for this are that discum is made to (1) be (relatively) simple and (2) give the developer/user freedom with how to handle the rate limits. We (Merubokkusu and anewrandomaccount) do not take any responsibility for any consequences you might face while using discum. We also do not take any responsibility for any damage caused (to servers/channels) through the use of Discum. Discum is a tool; how you use this tool is on you.
 
 ## Installation  
-To install the library without remote authentication (logging in using a phone & qr code), run:
+To install the library normally, run:
 ```
 python -m pip install --user --upgrade git+https://github.com/Merubokkusu/Discord-S.C.U.M.git#egg=discum
 ```
-Otherwise, to also use remote authentication functions, run:
+Otherwise, to also use remote authentication functions (login using a phone & qr code), run:
 ```
 python -m pip install --user --upgrade -e git+https://github.com/Merubokkusu/Discord-S.C.U.M.git#egg=discum[ra]
 ```
@@ -59,7 +62,6 @@ python -m pip install --user --upgrade -e git+https://github.com/Merubokkusu/Dis
 - websocket_client==0.59.0
 - filetype
 - ua-parser
-- random\_user\_agent
 - colorama
 
 remote auth prerequisites (if you install discum[ra]):       
@@ -77,7 +79,7 @@ Please see the [contribution guidelines](https://github.com/Merubokkusu/Discord-
 # Example usage
 ```python
 import discum     
-bot = discum.Client(token='420tokentokentokentoken.token.tokentokentokentokentoken', log={"console":True, "file":False})
+bot = discum.Client(token='420tokentokentokentoken.token.tokentokentokentokentoken', log=False)
 
 bot.sendMessage("238323948859439", "Hello :)")
 
@@ -114,7 +116,8 @@ bot.gateway.run(auto_reconnect=True)
 - [X] On-Message (and other on-anything gateway) capabilities
 - [X] Getting guild members
 - [X] improve documentation
-- [ ] add more http api wraps (interactions and guilds)
+- [X] add interactions (slash command triggering, buttons, and dropdowns/menus)
+- [ ] add more guild http api wraps
 - [ ] media (voice & video calls, along with the various discord games/activites)
 - [ ] Everything
 
@@ -141,4 +144,4 @@ Q: ```The owner of this website (discord.com) has banned your access based on yo
 A: This is because of your user agent (https://stackoverflow.com/a/24914742/14776493). Either try again or reinitialize your client with a new user agent.       
     
 ## Notes
-In recent years, token logging has become more common (as many people don't check code before they run it). I've seen many closed-source selfbots, and while surely some are well intentioned, others not so much. Discum (discord api wrapper) is open-sourced and organized to provide transparency, but even so, we encourage you to look at the code. Not only will looking at the code help you to better understand how discord's api is structured, but it'll also let you know exactly what you're running. If you have any questions about Discum, feel free to ask us.
+In recent years, token logging has become more common (as many people don't check code before they run it). I've seen many closed-source selfbots, and while surely some are well intentioned, others not so much. Discum (discord api wrapper) is open-sourced and organized to provide transparency, but even so, we encourage you to look at the code. Not only will looking at the code help you to better understand how discord's api is structured, but it'll also let you know exactly what you're running. If you have questions about Discum (after looking at the docs & previous issues), free to ask us.

@@ -1,10 +1,14 @@
-from ..utils.fileparse import Fileparse
 from requests_toolbelt import MultipartEncoder
-import random,string
-import os.path
+import random, string
 import time, datetime
+import os.path
 import json
-from ..RESTapiwrap import *
+import base64
+
+from ..utils.fileparse import Fileparse
+from ..utils.contextproperties import ContextProperties
+from ..utils.nonce import calculateNonce
+from ..RESTapiwrap import Wrapper
 
 try:
 	from urllib.parse import quote_plus, urlparse, urlencode
@@ -13,16 +17,11 @@ except ImportError:
 	from urlparse import urlparse
 
 class Messages(object):
+	__slots__ = ['discord', 's', 'log']
 	def __init__(self, discord, s, log): #s is the requests session object
 		self.discord = discord
 		self.s = s
 		self.log = log
-
-	def calculateNonce(self, date="now"):
-		if date == "now":
-			date = datetime.datetime.now()
-		unixts = time.mktime(date.timetuple())
-		return str((int(unixts)*1000-1420070400000)*4194304)
 
 	#just the raw endpoint
 	def createDMraw(self, recipients):
@@ -30,13 +29,51 @@ class Messages(object):
 		if isinstance(recipients, str):
 			recipients = [recipients]
 		body = {"recipients": recipients}
-		return Wrapper.sendRequest(self.s, 'post', url, body, headerModifications={"update":{"X-Context-Properties":"e30="}}, log=self.log)
+		if len(recipients)>1:
+			context = ContextProperties.get("new group dm")
+		else:
+			context = "e30=" #{}
+		return Wrapper.sendRequest(self.s, 'post', url, body, headerModifications={"update":{"X-Context-Properties":context}}, log=self.log)
 
 	#create a DM
 	def createDM(self, recipients):
 		req = self.createDMraw(recipients)
 		self.getMessages(req.json()["id"], num=50, beforeDate=None, aroundMessage=None)
 		return req
+
+	#deleteChannel (also works for deleting dms/dm-groups)
+	def deleteChannel(self, channelID):
+		url = self.discord+'channels/'+channelID
+		return Wrapper.sendRequest(self.s, 'delete', url, log=self.log)
+
+	def removeFromDmGroup(self, channelID, userID):
+		url = self.discord+'channels/'+channelID+'/recipients/'+userID
+		return Wrapper.sendRequest(self.s, 'delete', url, log=self.log)
+
+	def addToDmGroup(self, channelID, userID):
+		url = self.discord+'channels/'+channelID+'/recipients/'+userID
+		context = ContextProperties.get("add friends to dm")
+		return Wrapper.sendRequest(self.s, 'put', url, headerModifications={"update":{"X-Context-Properties":context}}, log=self.log)
+
+	def createDmGroupInvite(self, channelID, max_age_seconds):
+		url = self.discord+'channels/'+channelID+'/invites'
+		if max_age_seconds == False:
+			max_age_seconds = 0
+		body = {"max_age": max_age_seconds}
+		context = ContextProperties.get("Group DM Invite Create")
+		return Wrapper.sendRequest(self.s, 'post', url, body, headerModifications={"update":{"X-Context-Properties":context}}, log=self.log)
+
+	def setDmGroupName(self, channelID, name):
+		url = self.discord+'channels/'+channelID
+		body = {"name": name}
+		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
+
+	def setDmGroupIcon(self, channelID, imagePath):
+		url = self.discord+'channels/'+channelID
+		with open(imagePath, "rb") as image:
+			encodedImage = base64.b64encode(image.read()).decode('utf-8')
+		body = {"icon":"data:image/png;base64,"+encodedImage}
+		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
 
 	#get messages
 	def getMessages(self,channelID,num,beforeDate,aroundMessage): # num is between 1 and 100, beforeDate is a snowflake
@@ -63,10 +100,12 @@ class Messages(object):
 	#text message
 	def sendMessage(self, channelID, message, nonce, tts, embed, message_reference, allowed_mentions, sticker_ids):
 		url = self.discord+"channels/"+channelID+"/messages"
+		body = {"content": message, "tts": tts}
 		if nonce == "calculate":
-			body = {"content": message, "tts": tts, "nonce": self.calculateNonce()}
+			nonce = calculateNonce()
 		else:
-			body = {"content": message, "tts": tts, "nonce": str(nonce)}
+			nonce = str(nonce)
+		body["nonce"] = nonce
 		if embed != None:
 			body["embed"] = embed
 		if message_reference != None:
@@ -95,26 +134,21 @@ class Messages(object):
 			filename = os.path.basename(os.path.normpath(filelocation))
 		#now time to post the file
 		url = self.discord+'channels/'+channelID+'/messages'
-		if isurl:
-			payload = {"content":message,"tts":tts}
-			if message_reference != None:
-				payload["message_reference"] = message_reference
-				payload["type"] = 19
-			if sticker_ids != None:
-				payload["sticker_ids"] = sticker_ids
-			fields={"file":(filename,fd,mimetype), "payload_json":(None,json.dumps(payload))}
-		else:
-			payload = {"content":message,"tts":tts}
-			if message_reference != None:
-				payload["message_reference"] = message_reference
-				payload["type"] = 19
-			if sticker_ids != None:
-				payload["sticker_ids"] = sticker_ids
-			fields={"file":(filename,open(filelocation,'rb').read(),mimetype), "payload_json":(None,json.dumps(payload))}
-		m=MultipartEncoder(fields=fields,boundary='----WebKitFormBoundary'+''.join(random.sample(string.ascii_letters+string.digits,16)))
-		self.s.headers.update({"Content-Type":m.content_type})
-		response = Wrapper.sendRequest(self.s, 'post', url, body=m, log=self.log)
-		self.s.headers.update({"Content-Type":"application/json"})
+		
+		payload = {"content":message,"tts":tts}
+		if message_reference != None:
+			payload["message_reference"] = message_reference
+			payload["type"] = 19
+		if sticker_ids != None:
+			payload["sticker_ids"] = sticker_ids
+		if not isurl:
+			fd = open(filelocation,'rb').read()
+		fields={"file":(filename,fd,mimetype), "payload_json":(None,json.dumps(payload))}
+		
+		randomstr = ''.join(random.sample(string.ascii_letters+string.digits,16))
+		m = MultipartEncoder(fields=fields,boundary='----WebKitFormBoundary'+randomstr)
+		headerMods = {"update": {"Content-Type":m.content_type}}
+		response = Wrapper.sendRequest(self.s, 'post', url, body=m, headerModifications=headerMods, log=self.log)
 		return response
 
 	def reply(self, channelID, messageID, message, nonce, tts, embed, allowed_mentions, sticker_ids, file, isurl):
@@ -123,8 +157,14 @@ class Messages(object):
 		else:
 			self.sendFile(channelID, file, isurl=isurl, message=message, tts=tts, message_reference={"channel_id":channelID,"message_id":messageID}, sticker_ids=sticker_ids)
 
-	def searchMessages(self, guildID, channelID, authorID, authorType, mentionsUserID, has, linkHostname, embedProvider, embedType, attachmentExtension, attachmentFilename, mentionsEveryone, includeNsfw, afterDate, beforeDate, textSearch, afterNumResults, limit): #classic discord search function, results with key "hit" are the results you searched for, afterNumResults (aka offset) is multiples of 25 and indicates after which messages (type int), filterResults defaults to False
-		url = self.discord+"guilds/"+guildID+"/messages/search?"
+	def searchMessages(self, guildID, channelID, authorID, authorType, mentionsUserID, has, linkHostname, embedProvider, embedType, attachmentExtension, attachmentFilename, mentionsEveryone, includeNsfw, sortBy, sortOrder, afterDate, beforeDate, textSearch, afterNumResults, limit): #classic discord search function, results with key "hit" are the results you searched for, afterNumResults (aka offset) is multiples of 25 and indicates after which messages (type int), filterResults defaults to False
+		if guildID:
+			url = self.discord+"guilds/"+guildID+"/messages/search?"
+		else:
+			if isinstance(channelID, str):
+				url = self.discord+"channels/{}/messages/search?".format(channelID)
+			else:
+				url = self.discord+"channels/{}/messages/search?".format(channelID[0])
 		allqueryparams = []
 		if channelID:
 			if isinstance(channelID, str):
@@ -185,7 +225,11 @@ class Messages(object):
 		if textSearch:
 			allqueryparams.append(("content", str(textSearch)))
 		if includeNsfw:
-			allqueryparams.append(("include_nsfw", True))
+			allqueryparams.append(("include_nsfw", "true"))
+		if sortBy:
+			allqueryparams.append(("sort_by", sortBy))
+		if sortOrder:
+			allqueryparams.append(("sort_order", sortOrder))
 		if afterNumResults:
 			allqueryparams.append(("offset", str(afterNumResults)))
 		if limit!=None:
@@ -194,8 +238,11 @@ class Messages(object):
 		url += querystring
 		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
-	def filterSearchResults(self, searchResponse): #only input is the requests response object outputted from searchMessages, returns type list
-		jsonresponse = searchResponse.json()['messages']
+	def filterSearchResults(self, searchResponse): #only input is the requests response object or the dictionary response
+		if hasattr(searchResponse, 'json'):
+			jsonresponse = searchResponse.json()['messages']
+		else:
+			jsonresponse = searchResponse
 		filteredMessages = []
 		for group in jsonresponse:
 			for result in group:
@@ -207,9 +254,11 @@ class Messages(object):
 		url = self.discord+"channels/"+channelID+"/typing"
 		return Wrapper.sendRequest(self.s, 'post', url, log=self.log)
 
-	def editMessage(self, channelID, messageID, newMessage):
+	def editMessage(self, channelID, messageID, newMessage, newEmbed):
 		url = self.discord+"channels/"+channelID+"/messages/"+messageID
 		body = {"content": newMessage}
+		if newEmbed != None:
+			body["embed"] = newEmbed
 		return Wrapper.sendRequest(self.s, 'patch', url, body, log=self.log)
 
 	def deleteMessage(self, channelID, messageID):
@@ -237,6 +286,13 @@ class Messages(object):
 		parsedEmoji = quote_plus(emoji)
 		url = self.discord+"channels/"+channelID+"/messages/"+messageID+"/reactions/"+parsedEmoji+"/%40me"
 		return Wrapper.sendRequest(self.s, 'delete', url, log=self.log)
+
+	def getReactionUsers(self,channelID,messageID,emoji,afterUserID,limit):
+		parsedEmoji = quote_plus(emoji)
+		url = self.discord+"channels/"+channelID+"/messages/"+messageID+"/reactions/"+parsedEmoji+"?limit="+str(limit)
+		if afterUserID:
+			url += '&after='+str(afterUserID)
+		return Wrapper.sendRequest(self.s, 'get', url, log=self.log)
 
 	#acknowledge message (mark message read)
 	def ackMessage(self, channelID, messageID, ackToken):

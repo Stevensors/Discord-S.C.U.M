@@ -6,7 +6,9 @@
         - [session data/settings](#botgatewaysession)
         
 - [Functions](#Functions)
-    - [check token](#check-token)
+    - [check token](#checkToken)
+    - [switch account](#switchAccount)
+    - [switch proxy](#switchProxy)
     - [convert between snowflake and unixts](#snowflake_to_unixts-and-unixts_to_snowflake)
     - [gateway functions](#gateway-functions)
         - [add functions to gateway command list](#gatewaycommand)
@@ -27,14 +29,14 @@ bot.log = {"console":True, "file":False}
 bot.log = {"console":False, "file":"log.txt"}
 #etc...
 ```
-```bot.gateway.log``` dict, manages logging for gateway actions 
+```bot.gateway.log``` dict, manages logging for gateway actions (live events, websocket)
 ```python
 bot.gateway.log = {"console":True, "file":False}
 #or
 bot.gateway.log = {"console":False, "file":"gatewaylog.txt"}
 #etc...
 ```
-```bot.ra.log``` dict, manages logging for remote authentication gateway actions
+```bot.ra.log``` dict, manages logging for remote authentication gateway actions (login thru qr-code)
 ```python
 bot.ra.log = {"console":True, "file":False}
 #or
@@ -51,14 +53,11 @@ bot._Client__totp_secret
 bot._Client__xfingerprint
 bot._Client__user_agent
 bot._Client__super_properties
-bot._Client__proxy_host
-bot._Client__proxy_port
 bot.api_version
 bot.discord #REST api base url
 bot.websocketurl
 bot.s #requests.Session object
 bot.gateway #GatewayServer object
-bot.Embedder #Embedder object (helps with making embeds)
 bot.Science #placeholder variable for science events
 ```
 
@@ -86,6 +85,13 @@ bot.gateway._last_ack #when last HEARTBEAT_ACK was received
 bot.gateway.latency #seconds between HEARTBEAT and HEARTBEAT_ACK
 bot.gateway._last_err #last detected error
 bot.gateway._last_close_event #last close event
+```
+
+```python
+bot.gateway.proxy_host
+bot.gateway.proxy_port
+bot.gateway.proxy_type
+bot.gateway.proxy_auth
 ```
 
 ```python
@@ -253,6 +259,29 @@ bot.checkToken('poop')
 ###### Returns:
 a requests.Response object. If the token is valid, the .json() should contain the following keys:        
 \['id', 'username', 'avatar', 'discriminator', 'public_flags', 'flags', 'locale', 'nsfw_allowed', 'mfa_enabled', 'analytics_token', 'email', 'verified', 'phone'\]
+
+##### ```switchProxy```
+```python
+bot.switchProxy('http://username:password123@127.0.0.1:8080')
+#do stuff
+bot.switchProxy('https://192.168.1.18:4444')
+#do other stuff
+```
+###### Parameters:
+- newProxy (str/None) - set to None to not use a proxy
+	examples:       
+		"http://10.10.1.10:3128"       
+		"http://username:password123@10.10.1.10:3128"       
+		"https://10.10.1.10:3126"       
+		"socks4://10.10.1.10:3126"
+- updateGateway (Optional[bool]) - update proxy for gateway. Defaults to True
+
+##### ```switchAccount```
+```python
+bot.switchAccount('token')
+```
+###### Parameters:
+- newToken (str)
 
 ##### ```snowflake_to_unixts``` and ```unixts_to_snowflake```
 ```python

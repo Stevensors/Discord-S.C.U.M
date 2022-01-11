@@ -1,9 +1,9 @@
-import copy #only used if header modification is used
 import json
 import inspect
 import time
-from requests.exceptions import ConnectionError
-from .logger import * #imports LogLevel and Logger
+import requests
+
+from .logger import LogLevel, Logger
 
 #functions for REST requests in Wrapper class
 class Wrapper:
@@ -16,11 +16,14 @@ class Wrapper:
 			color = LogLevel.SEND
 		# [+] (<class->function) body
 		elif part == "body":
-			text = str(data)
+			try:
+				text = json.dumps(data)
+			except:
+				text = str(data)
 			color = LogLevel.SEND
 		# [+] (<class->function) Response <- response.text
 		elif part == "response":
-			text = "Response <- {}".format(data)
+			text = "Response <- {}".format(data.encode('utf-8'))
 			color = LogLevel.RECEIVE
 		formatted = " [+] {} {}".format(function, text)
 		return formatted, color
@@ -32,24 +35,24 @@ class Wrapper:
 			import brotli
 			data = brotli.decompress(payload)
 			return data
-		except Exception:
-			Logger.log("Either brotli decompress failed or discord returned incorrect content encodings.", None, log) #yea, it happens :/
+		except:
 			return payload
 
 	#header modifications, like endpoints that don't need auth, superproperties, etc; also for updating headers like xfingerprint
 	@staticmethod
 	def editedReqSession(reqsession, headerModifications):
+		edited = requests.Session()
+		edited.headers.update(reqsession.headers.copy())
+		edited.proxies.update(reqsession.proxies.copy())
+		edited.cookies.update(reqsession.cookies.copy())
 		if headerModifications not in ({}, None):
-			editedSession = copy.deepcopy(reqsession)
 			if "update" in headerModifications:
-				editedSession.headers.update(headerModifications["update"])
+				edited.headers.update(headerModifications["update"])
 			if "remove" in headerModifications:
 				for header in headerModifications["remove"]:
-					if header in editedSession.headers:
-						del editedSession.headers[header]
-			return editedSession
-		else:
-			return reqsession
+					if header in edited.headers:
+						del edited.headers[header]
+		return edited
 
 	#only for "Connection reset by peer" errors. Influenced by praw's retry code
 	@staticmethod
@@ -58,7 +61,7 @@ class Wrapper:
 		while True:
 			try:
 				return reqMethod(url=url, **data)
-			except ConnectionError:
+			except requests.exceptions.ConnectionError:
 				if log:
 					Logger.log("Connection reset by peer. Retrying...", None, log)
 					time.sleep(0.3)
@@ -69,14 +72,31 @@ class Wrapper:
 				break
 		return None
 
+	#headerModifications = {"update":{}, "remove":[]}
 	@staticmethod
-	def sendRequest(reqsession, method, url, body=None, headerModifications={}, timeout=None, log={"console":True, "file":False}): #headerModifications = {"update":{}, "remove":[]}
+	def sendRequest(reqsession, method, url, body=None, headerModifications={}, timeout=None, log={"console":True, "file":False}):
+		#https://stackoverflow.com/a/6794329/14776493 + ty dolfies
+		if body is None:
+			body = None
+		if headerModifications == {}:
+			headerModifications = {}
+		if timeout is None:
+			timeout = None
+		if log == {"console":True, "file":False}:
+			log = {"console":True, "file":False}
+		#rest of stuff
 		if hasattr(reqsession, method): #just checks if post, get, whatever is a valid requests method
 			# 1. find function
 			stack = inspect.stack()
 			function_name = "({}->{})".format(str(stack[1][0].f_locals['self']).split(' ')[0], stack[1][3])
 			# 2. edit request session if needed
-			reqsession = Wrapper.editedReqSession(reqsession, headerModifications)
+			if body == None:
+				if headerModifications.get('remove', None) == None:
+					headerModifications['remove'] = ['Content-Type']
+				elif 'Content-Type' not in headerModifications['remove']:
+					headerModifications['remove'].append('Content-Type')
+
+			s = Wrapper.editedReqSession(reqsession, headerModifications)
 			# 3. log url
 			text, color = Wrapper.logFormatter(function_name, [method, url], part="url")
 			Logger.log(text, color, log)
@@ -94,7 +114,7 @@ class Wrapper:
 			if timeout != None:
 				data['timeout'] = timeout
 			# 6. the request
-			response = Wrapper.retryLogic(getattr(reqsession, method), url, data, log)
+			response = Wrapper.retryLogic(getattr(s, method), url, data, log)
 			# 7. brotli decompression of response
 			if response and response.headers.get('Content-Encoding') == "br": #decompression; gzip/deflate is automatically handled by requests module
 				response._content = Wrapper.brdecompress(response.content, log)
@@ -102,7 +122,9 @@ class Wrapper:
 			if response != None:
 				text, color = Wrapper.logFormatter(function_name, response.text, part="response")
 				Logger.log(text, color, log)
-			# 9. return response object with decompressed content
+				# 9. update cookies
+				reqsession.cookies.update(response.cookies)
+			# 10. return response object with decompressed content
 			return response
 		else:
 			Logger.log('Invalid request method.', None, log)
